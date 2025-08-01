@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"sync"
 	"time"
 )
 
@@ -14,8 +15,9 @@ var (
 )
 
 type MemoryDB struct {
-	urls map[ShortCode]*ShortURL
-	id   int64
+	id      int64
+	urls    map[ShortCode]*ShortURL
+	rwMutex sync.RWMutex
 }
 
 func NewMemoryDB() *MemoryDB {
@@ -27,6 +29,10 @@ func NewMemoryDB() *MemoryDB {
 
 func (db *MemoryDB) CreateShortURL(url string) (*ShortURL, error) {
 	shortCode := ShortCode(generateShortCode(url))
+
+	db.rwMutex.Lock()
+	defer db.rwMutex.Unlock()
+
 	shortURL := &ShortURL{
 		ID:        db.generateID(),
 		URL:       url,
@@ -40,6 +46,9 @@ func (db *MemoryDB) CreateShortURL(url string) (*ShortURL, error) {
 }
 
 func (db *MemoryDB) GetOriginalURL(shortCode ShortCode) (*ShortURL, error) {
+	db.rwMutex.RLock()
+	defer db.rwMutex.RUnlock()
+
 	shortURL, exists := db.urls[shortCode]
 	if !exists {
 		return nil, ErrNotFound
@@ -48,6 +57,9 @@ func (db *MemoryDB) GetOriginalURL(shortCode ShortCode) (*ShortURL, error) {
 }
 
 func (db *MemoryDB) UpdateShortURL(shortCode ShortCode, newURL string) (*ShortURL, error) {
+	db.rwMutex.Lock()
+	defer db.rwMutex.Unlock()
+
 	shortURL, exists := db.urls[shortCode]
 	if !exists {
 		return nil, ErrNotFound
@@ -59,6 +71,9 @@ func (db *MemoryDB) UpdateShortURL(shortCode ShortCode, newURL string) (*ShortUR
 }
 
 func (db *MemoryDB) DeleteShortURL(shortCode ShortCode) error {
+	db.rwMutex.Lock()
+	defer db.rwMutex.Unlock()
+
 	_, exists := db.urls[shortCode]
 	if !exists {
 		return ErrNotFound
