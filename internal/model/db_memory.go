@@ -15,7 +15,7 @@ var (
 
 type MemoryDB struct {
 	urls map[ShortCode]*ShortURL
-	id   int
+	id   int64
 }
 
 func NewMemoryDB() *MemoryDB {
